@@ -52,5 +52,11 @@
     "url": "https://www.google.com",
     "clicks": 1,
     "creado": "2026-08-13T18:48:23.610Z"
+  },
+  {
+    "codigo": "uv7",
+    "url": "https://www.google.com",
+    "clicks": 0,
+    "creado": "2026-08-13T19:09:03.828Z"
   }
 ]
