@@ -16,14 +16,41 @@
       <button type="submit">Buscar</button>
     </form>
 
-    <!-- maqueta: datos de mentira, falta conectar con el server -->
-    <div class="stats">
-      <div class="stat"><span class="numero">123</span><span class="etiqueta">clicks</span></div>
-      <div class="stat"><span class="numero">-</span><span class="etiqueta">URL original</span></div>
-      <div class="stat"><span class="numero">-</span><span class="etiqueta">creado el</span></div>
+    <p id="error" class="sub oculto"></p>
+
+    <div id="stats" class="stats oculto">
+      <div class="stat"><span id="stat-clicks" class="numero"></span><span class="etiqueta">clicks</span></div>
+      <div class="stat"><span id="stat-url" class="numero"></span><span class="etiqueta">URL original</span></div>
+      <div class="stat"><span id="stat-creado" class="numero"></span><span class="etiqueta">creado el</span></div>
     </div>
 
     <p class="pie"><a href="index.html">Volver a acortar</a></p>
   </main>
+
+  <script>
+    const form = document.getElementById('form-stats');
+    const stats = document.getElementById('stats');
+    const error = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const codigo = document.getElementById('codigo').value.trim();
+      stats.classList.add('oculto');
+      error.classList.add('oculto');
+
+      const res = await fetch(`/api/links/${encodeURIComponent(codigo)}/stats`);
+      if (!res.ok) {
+        error.textContent = 'No existe ese link';
+        error.classList.remove('oculto');
+        return;
+      }
+
+      const data = await res.json();
+      document.getElementById('stat-clicks').textContent = data.clicks;
+      document.getElementById('stat-url').textContent = data.url;
+      document.getElementById('stat-creado').textContent = new Date(data.creado).toLocaleDateString();
+      stats.classList.remove('oculto');
+    });
+  </script>
 </body>
 </html>
