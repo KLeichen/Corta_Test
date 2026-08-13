@@ -46,5 +46,11 @@
     "url": "https://es.wikipedia.org/wiki/Acortador_de_URL",
     "clicks": 5,
     "creado": "2026-05-06T13:27:38.000Z"
+  },
+  {
+    "codigo": "az2",
+    "url": "https://www.google.com",
+    "clicks": 1,
+    "creado": "2026-08-13T18:48:23.610Z"
   }
 ]
