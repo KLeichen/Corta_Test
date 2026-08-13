@@ -90,9 +90,7 @@ Devuelve las estadísticas de un link, sin modificarlo.
 
 ## Fuera de alcance de este spec
 
-- `index_v2_FINAL.js` y `server_OLD.js` son versiones duplicadas/viejas, no wireadas en `package.json`. No forman parte del comportamiento especificado; se resuelven (probablemente eliminándolas) en Milestone 2.
-- `links_backup_marzo.json` es un backup suelto, no se lee en ningún código. Mismo tratamiento que el punto anterior.
-- `notas.txt` contiene una credencial en texto plano. No se documenta su contenido acá; se trata como secreto a rotar/eliminar, nunca a versionar tal cual (ver Milestone 5 del mission.md).
+`index_v2_FINAL.js`, `server_OLD.js`, `links_backup_marzo.json`, `notas.txt`, `test.js` y `public/estilos_viejos.css` eran archivos muertos/duplicados del proyecto heredado (versiones viejas del server, un backup suelto, una credencial en texto plano, un smoke-test manual redundante con la batería TDD, y CSS sin referenciar). Milestone 2 los sacó del repo — no forman parte del comportamiento especificado.
 
 ## Decisiones abiertas / a confirmar
 
