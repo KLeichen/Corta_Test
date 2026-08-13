@@ -8,6 +8,14 @@ Corta es el acortador de URLs interno de la empresa. Un empleado pega una URL la
 
 **En producción:** https://corta-production-2bad.up.railway.app
 
+## Demo
+
+Flujo completo grabado sobre el deploy real en producción: acortar un link, entrar al link corto (redirect real), y ver cómo el click quedó contado en las estadísticas.
+
+<p align="center">
+  <img src="docs/corta-demo.gif" alt="Demo animado: se acorta un link, se visita el link corto y se confirma el click en la pantalla de estadísticas" width="600">
+</p>
+
 ## De dónde viene este proyecto
 
 El desarrollador original de Corta se fue de la empresa sin dejar documentación. Lo único que entregó fue una carpeta de código: archivos duplicados, versiones viejas dando vueltas, dependencias sin usar, una nota con una credencial en texto plano, y una app que "más o menos andaba" pero con errores conocidos por los usuarios (el link corto no redirigía de verdad, los clicks no se guardaban, dos links podían terminar compartiendo el mismo código y pisarse) y una funcionalidad a medio terminar (la página de estadísticas).
@@ -16,20 +24,30 @@ Este repo documenta ese proceso completo: desde el desorden inicial (primer comm
 
 ## Cómo usarlo
 
-### Acortar un link
+### 1. Acortar un link
 
-Pegás una URL, apretás "Acortar", y te devuelve un link corto para compartir.
+Pegás una URL, apretás "Acortar", y te devuelve un link corto para compartir (con botón para copiarlo).
 
 <p align="center">
   <img src="docs/screenshots/link-generado.png" alt="Corta mostrando el link corto generado, con botón para copiarlo" width="420">
 </p>
 
-### Ver estadísticas
+### 2. Visitar el link corto
+
+Entrar a `/:codigo` hace un redirect real (302) al destino original — no es una pantalla intermedia, el navegador navega directo — y ese acceso queda contado.
+
+### 3. Ver estadísticas
 
 Desde la página principal, "Ver estadísticas de un link" lleva a una pantalla donde, poniendo el código de 3 caracteres, se consultan sus clicks, la URL de destino y la fecha de creación.
 
 <p align="center">
   <img src="docs/screenshots/estadisticas.png" alt="Pantalla de estadísticas mostrando clicks, URL original y fecha de creación de un link" width="420">
+</p>
+
+Si el código no existe, se muestra un mensaje en vez de romper la pantalla:
+
+<p align="center">
+  <img src="docs/screenshots/estadisticas-error.png" alt="Pantalla de estadísticas mostrando el mensaje 'No existe ese link' para un código inválido" width="420">
 </p>
 
 ## Cómo correrlo
@@ -70,6 +88,7 @@ El comportamiento esperado de cada endpoint, con sus casos borde, está detallad
 
 - **`links.json` sin locking**: en el modo local/tests (sin `DATABASE_URL`), el archivo se lee y escribe entero por request sin locking — dos escrituras concurrentes pueden pisarse entre sí. En producción esto no aplica porque se usa Postgres.
 - **Alfabeto de 3 caracteres**: 46.656 combinaciones posibles. Si el volumen de links crece mucho, va a hacer falta ampliar el código.
+- **Bug de UI en `stats.html`**: si buscás un código válido y después uno que no existe, el resultado anterior no se oculta — queda mostrado debajo del mensaje "No existe ese link". Es un problema de orden en `estilos.css`: la regla `.stats { display: flex; ... }` está declarada después de `.oculto { display: none; }`, y al tener la misma especificidad, `.stats` gana y pisa el `display: none`. Sin arreglar todavía.
 
 ## Tests
 
