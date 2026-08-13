@@ -6,6 +6,8 @@ Corta es el acortador de URLs interno de la empresa. Un empleado pega una URL la
   <img src="docs/screenshots/inicio.png" alt="Pantalla principal de Corta, con una URL cargada" width="420">
 </p>
 
+**En producción:** https://corta-production-2bad.up.railway.app
+
 ## De dónde viene este proyecto
 
 El desarrollador original de Corta se fue de la empresa sin dejar documentación. Lo único que entregó fue una carpeta de código: archivos duplicados, versiones viejas dando vueltas, dependencias sin usar, una nota con una credencial en texto plano, y una app que "más o menos andaba" pero con errores conocidos por los usuarios (el link corto no redirigía de verdad, los clicks no se guardaban, dos links podían terminar compartiendo el mismo código y pisarse) y una funcionalidad a medio terminar (la página de estadísticas).
@@ -50,7 +52,7 @@ Corre la batería de tests (`node --test`) contra una base de datos temporal y a
 ## Arquitectura
 
 - **Server**: Express (`server.js`). Un único proceso, sin capas ni framework extra.
-- **Storage**: `links.json` en la raíz del repo. Todo el archivo se lee y se escribe entero en cada request (`fs.readFileSync`/`writeFileSync`), sin una base de datos real todavía — ver [Limitaciones conocidas](#limitaciones-conocidas).
+- **Storage**: `storage.js` usa Postgres cuando hay `DATABASE_URL` seteada (producción); si no, cae a `links.json` en la raíz del repo, leído y escrito entero en cada request (local y tests). Así los links y clicks sobreviven a un redeploy en producción sin necesitar una base real para desarrollar.
 - **Frontend**: HTML/CSS/JS plano en `public/`, servido como estático por Express. Sin build step ni framework.
 - **Generación de códigos**: `utils.js` arma códigos de 3 caracteres `[a-z0-9]` y reintenta hasta encontrar uno que no esté en uso, para que dos links nunca puedan pisarse.
 
@@ -66,7 +68,7 @@ El comportamiento esperado de cada endpoint, con sus casos borde, está detallad
 
 ## Limitaciones conocidas
 
-- **Sin base de datos real**: `links.json` no sobrevive a un redeploy en el hosting actual de forma confiable, y no hay locking — dos escrituras concurrentes pueden pisarse entre sí. Queda como trabajo de la etapa de producción.
+- **`links.json` sin locking**: en el modo local/tests (sin `DATABASE_URL`), el archivo se lee y escribe entero por request sin locking — dos escrituras concurrentes pueden pisarse entre sí. En producción esto no aplica porque se usa Postgres.
 - **Alfabeto de 3 caracteres**: 46.656 combinaciones posibles. Si el volumen de links crece mucho, va a hacer falta ampliar el código.
 
 ## Tests
