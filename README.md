@@ -88,7 +88,6 @@ El comportamiento esperado de cada endpoint, con sus casos borde, está detallad
 
 - **`links.json` sin locking**: en el modo local/tests (sin `DATABASE_URL`), el archivo se lee y escribe entero por request sin locking — dos escrituras concurrentes pueden pisarse entre sí. En producción esto no aplica porque se usa Postgres.
 - **Alfabeto de 3 caracteres**: 46.656 combinaciones posibles. Si el volumen de links crece mucho, va a hacer falta ampliar el código.
-- **Bug de UI en `stats.html`**: si buscás un código válido y después uno que no existe, el resultado anterior no se oculta — queda mostrado debajo del mensaje "No existe ese link". Es un problema de orden en `estilos.css`: la regla `.stats { display: flex; ... }` está declarada después de `.oculto { display: none; }`, y al tener la misma especificidad, `.stats` gana y pisa el `display: none`. Sin arreglar todavía.
 
 ## Tests
 

@@ -58,9 +58,9 @@ button:hover { background: #b5161f; }
   word-break: break-all;
 }
 
-.oculto { display: none; }
-
 .stats { display: flex; gap: 12px; margin-top: 24px; }
+
+.oculto { display: none; }
 
 .stat {
   flex: 1;
