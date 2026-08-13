@@ -7,29 +7,105 @@
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-  <main class="tarjeta">
-    <img src="logo.png" alt="Corta" class="logo">
-    <h1>Corta</h1>
-    <p class="sub">El acortador de URLs interno</p>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <img src="logo.png" alt="" class="logo">
+        <span>Corta</span>
+      </a>
+      <nav class="nav">
+        <a href="stats.html">Ver estadísticas</a>
+      </nav>
+    </header>
 
-    <form id="form">
-      <input type="url" id="url" placeholder="https://una-url-muy-larga..." required>
-      <button type="submit">Acortar</button>
-    </form>
+    <main class="layout">
+      <section class="panel panel-principal">
+        <h1>Acortar un link</h1>
+        <p class="sub">Pegá una URL larga y obtené un código corto para compartir.</p>
 
-    <div id="resultado" class="oculto">
-      <p>Tu link corto:</p>
-      <a id="link-corto" href="#" target="_blank"></a>
-      <button id="copiar" type="button">Copiar</button>
-    </div>
+        <form id="form">
+          <input type="url" id="url" placeholder="https://una-url-muy-larga..." required autofocus>
+          <button type="submit">Acortar</button>
+        </form>
 
-    <p class="pie"><a href="stats.html">Ver estadísticas de un link</a></p>
-  </main>
+        <div id="resultado" class="resultado oculto">
+          <p class="resultado-etiqueta">Tu link corto</p>
+          <div class="resultado-link-fila">
+            <a id="link-corto" href="#" target="_blank" rel="noopener"></a>
+            <button id="copiar" type="button" class="btn-secundario">Copiar</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="panel panel-historial">
+        <div class="panel-historial-header">
+          <h2>Historial</h2>
+          <button id="limpiar-historial" type="button" class="btn-texto oculto">Borrar</button>
+        </div>
+        <p class="sub sub-chica">Se guarda solo en este navegador.</p>
+
+        <p id="historial-vacio" class="historial-vacio">Todavía no acortaste ningún link acá.</p>
+        <ul id="historial-lista" class="historial-lista"></ul>
+      </aside>
+    </main>
+  </div>
 
   <script>
+    const CLAVE_HISTORIAL = 'corta_historial';
+    const MAX_HISTORIAL = 20;
+
     const form = document.getElementById('form');
     const resultado = document.getElementById('resultado');
     const linkCorto = document.getElementById('link-corto');
+    const historialLista = document.getElementById('historial-lista');
+    const historialVacio = document.getElementById('historial-vacio');
+    const limpiarBtn = document.getElementById('limpiar-historial');
+
+    function leerHistorial() {
+      try {
+        return JSON.parse(localStorage.getItem(CLAVE_HISTORIAL)) || [];
+      } catch {
+        return [];
+      }
+    }
+
+    function guardarHistorial(items) {
+      localStorage.setItem(CLAVE_HISTORIAL, JSON.stringify(items));
+    }
+
+    function formatearFecha(iso) {
+      return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function renderHistorial() {
+      const items = leerHistorial();
+      historialLista.innerHTML = '';
+      historialVacio.classList.toggle('oculto', items.length > 0);
+      limpiarBtn.classList.toggle('oculto', items.length === 0);
+
+      for (const item of items) {
+        const li = document.createElement('li');
+        li.className = 'historial-item';
+        li.innerHTML = `
+          <div class="historial-item-info">
+            <a class="historial-codigo" href="${item.corta}" target="_blank" rel="noopener">${item.corta}</a>
+            <span class="historial-url" title="${item.url}">${item.url}</span>
+          </div>
+          <div class="historial-item-acciones">
+            <span class="historial-fecha">${formatearFecha(item.creado)}</span>
+            <a class="historial-stats" href="stats.html?codigo=${encodeURIComponent(item.codigo)}">Stats</a>
+          </div>
+        `;
+        historialLista.appendChild(li);
+      }
+    }
+
+    function agregarAlHistorial(item) {
+      const items = leerHistorial();
+      items.unshift(item);
+      guardarHistorial(items.slice(0, MAX_HISTORIAL));
+      renderHistorial();
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -39,16 +115,28 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       });
+      if (!res.ok) return;
+
       const data = await res.json();
       const corta = window.location.origin + data.corta;
       linkCorto.textContent = corta;
       linkCorto.href = corta;
       resultado.classList.remove('oculto');
+
+      agregarAlHistorial({ codigo: data.codigo, corta: data.corta, url, creado: new Date().toISOString() });
+      document.getElementById('url').value = '';
     });
 
     document.getElementById('copiar').addEventListener('click', () => {
       navigator.clipboard.writeText(linkCorto.textContent);
     });
+
+    limpiarBtn.addEventListener('click', () => {
+      guardarHistorial([]);
+      renderHistorial();
+    });
+
+    renderHistorial();
   </script>
 </body>
 </html>

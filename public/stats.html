@@ -7,34 +7,45 @@
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-  <main class="tarjeta">
-    <h1>Estadísticas</h1>
-    <p class="sub">Consultá los números de un link corto</p>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="index.html">
+        <img src="logo.png" alt="" class="logo">
+        <span>Corta</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">Acortar un link</a>
+      </nav>
+    </header>
 
-    <form id="form-stats">
-      <input type="text" id="codigo" placeholder="ej: a3k" required>
-      <button type="submit">Buscar</button>
-    </form>
+    <main class="layout layout-una-columna">
+      <section class="panel panel-principal">
+        <h1>Estadísticas</h1>
+        <p class="sub">Consultá los números de un link corto.</p>
 
-    <p id="error" class="sub oculto"></p>
+        <form id="form-stats">
+          <input type="text" id="codigo" placeholder="ej: a3k" required>
+          <button type="submit">Buscar</button>
+        </form>
 
-    <div id="stats" class="stats oculto">
-      <div class="stat"><span id="stat-clicks" class="numero"></span><span class="etiqueta">clicks</span></div>
-      <div class="stat"><span id="stat-url" class="numero"></span><span class="etiqueta">URL original</span></div>
-      <div class="stat"><span id="stat-creado" class="numero"></span><span class="etiqueta">creado el</span></div>
-    </div>
+        <p id="error" class="mensaje-error oculto"></p>
 
-    <p class="pie"><a href="index.html">Volver a acortar</a></p>
-  </main>
+        <div id="stats" class="stats oculto">
+          <div class="stat"><span id="stat-clicks" class="numero"></span><span class="etiqueta">clicks</span></div>
+          <div class="stat"><span id="stat-url" class="numero"></span><span class="etiqueta">URL original</span></div>
+          <div class="stat"><span id="stat-creado" class="numero"></span><span class="etiqueta">creado el</span></div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script>
     const form = document.getElementById('form-stats');
     const stats = document.getElementById('stats');
     const error = document.getElementById('error');
+    const codigoInput = document.getElementById('codigo');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const codigo = document.getElementById('codigo').value.trim();
+    async function buscar(codigo) {
       stats.classList.add('oculto');
       error.classList.add('oculto');
 
@@ -50,7 +61,18 @@
       document.getElementById('stat-url').textContent = data.url;
       document.getElementById('stat-creado').textContent = new Date(data.creado).toLocaleDateString();
       stats.classList.remove('oculto');
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      buscar(codigoInput.value.trim());
     });
+
+    const codigoUrl = new URLSearchParams(window.location.search).get('codigo');
+    if (codigoUrl) {
+      codigoInput.value = codigoUrl;
+      buscar(codigoUrl);
+    }
   </script>
 </body>
 </html>
