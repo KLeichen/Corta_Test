@@ -1,7 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { generarCodigo } = require('./utils');
+const { generarCodigoUnico } = require('./utils');
 
 const app = express();
 app.use(express.json());
@@ -17,14 +17,26 @@ function guardarLinks(links) {
   fs.writeFileSync(DB_FILE, JSON.stringify(links, null, 2));
 }
 
+function esUrlValida(url) {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // crear un link corto
 app.post('/api/links', (req, res) => {
   const { url } = req.body;
-  if (!url) {
+  if (!url || typeof url !== 'string') {
     return res.status(400).json({ error: 'Falta la url' });
   }
+  if (!esUrlValida(url)) {
+    return res.status(400).json({ error: 'URL inválida' });
+  }
   const links = leerLinks();
-  const codigo = generarCodigo();
+  const codigo = generarCodigoUnico(links.map(function (l) { return l.codigo; }));
   const nuevo = {
     codigo: codigo,
     url: url,
@@ -44,7 +56,8 @@ app.get('/:codigo', (req, res) => {
     return res.status(404).send('No existe ese link');
   }
   link.clicks = link.clicks + 1;
-  res.send(link.url);
+  guardarLinks(links);
+  res.redirect(link.url);
 });
 
 if (require.main === module) {

@@ -9,4 +9,14 @@ function generarCodigo() {
   return codigo;
 }
 
-module.exports = { generarCodigo };
+// genera un codigo que no este en `existentes` (evita pisar links ya creados)
+function generarCodigoUnico(existentes) {
+  const usados = existentes instanceof Set ? existentes : new Set(existentes);
+  let codigo;
+  do {
+    codigo = generarCodigo();
+  } while (usados.has(codigo));
+  return codigo;
+}
+
+module.exports = { generarCodigo, generarCodigoUnico };
