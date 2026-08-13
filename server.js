@@ -7,7 +7,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static('public'));
 
-const DB_FILE = path.join(__dirname, 'links.json');
+const DB_FILE = process.env.LINKS_DB_FILE || path.join(__dirname, 'links.json');
 
 function leerLinks() {
   return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
@@ -47,6 +47,10 @@ app.get('/:codigo', (req, res) => {
   res.send(link.url);
 });
 
-app.listen(3000, function () {
-  console.log('Corta escuchando en http://localhost:3000');
-});
+if (require.main === module) {
+  app.listen(3000, function () {
+    console.log('Corta escuchando en http://localhost:3000');
+  });
+}
+
+module.exports = app;
