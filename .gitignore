@@ -1,1 +1,3 @@
 node_modules/
+reportes/
+.claude/settings.local.json

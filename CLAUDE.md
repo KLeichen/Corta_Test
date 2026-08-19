@@ -22,3 +22,8 @@ Corta — a small internal URL shortener (Spanish variable/comment names through
   When changing shortener behavior, confirm which file is actually meant to change — `server.js` is canonical unless told otherwise.
 - **Frontend**: static files served from `public/` via `express.static`. `stats.html` is markup-only with no backing endpoint yet — there is no `GET /api/links/:codigo/stats` route in `server.js`.
 - **Repo hygiene**: there is no `.gitignore`; `node_modules/` and `notas.txt` are committed. `notas.txt` currently contains a plaintext database credential — treat it as sensitive and avoid propagating it further (e.g. don't echo it into new files/commits).
+
+## Team automation
+
+- Remotes: `origin` is the individual repo (`KLeichen/Corta_Test`); `grupal` is the shared team repo (`lucasmonteverdi1/corta`). Team work happens on branch `Corta_Kevin`, tracking `grupal/Corta_Kevin` — `main` stays pointed at `origin`.
+- Skill `reporte-cambios` (`.claude/skills/reporte-cambios/SKILL.md`): updates the local repo from its remote and writes a report of new commits (author, files touched) to `reportes/` (gitignored, not committed). Built to run unattended from a scheduled cron job — if there are uncommitted changes or the branch has diverged, it stops and reports instead of forcing anything (no stash/reset/merge).

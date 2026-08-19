@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Corta: estadísticas</title>
+  <link rel="icon" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
@@ -25,7 +29,7 @@
 
         <form id="form-stats">
           <input type="text" id="codigo" placeholder="ej: a3k" required>
-          <button type="submit">Buscar</button>
+          <button type="submit" id="boton-buscar">Buscar</button>
         </form>
 
         <p id="error" class="mensaje-error oculto"></p>
@@ -44,23 +48,43 @@
     const stats = document.getElementById('stats');
     const error = document.getElementById('error');
     const codigoInput = document.getElementById('codigo');
+    const botonBuscar = document.getElementById('boton-buscar');
+
+    function animarConteo(el, hasta) {
+      const duracion = 700;
+      const inicio = performance.now();
+      function paso(ahora) {
+        const progreso = Math.min((ahora - inicio) / duracion, 1);
+        const facilitado = 1 - Math.pow(1 - progreso, 3);
+        el.textContent = Math.round(facilitado * hasta);
+        if (progreso < 1) requestAnimationFrame(paso);
+      }
+      requestAnimationFrame(paso);
+    }
 
     async function buscar(codigo) {
       stats.classList.add('oculto');
       error.classList.add('oculto');
+      botonBuscar.disabled = true;
+      botonBuscar.innerHTML = '<span class="spinner"></span>Buscando...';
 
-      const res = await fetch(`/api/links/${encodeURIComponent(codigo)}/stats`);
-      if (!res.ok) {
-        error.textContent = 'No existe ese link';
-        error.classList.remove('oculto');
-        return;
+      try {
+        const res = await fetch(`/api/links/${encodeURIComponent(codigo)}/stats`);
+        if (!res.ok) {
+          error.textContent = 'No existe ese link';
+          error.classList.remove('oculto');
+          return;
+        }
+
+        const data = await res.json();
+        animarConteo(document.getElementById('stat-clicks'), data.clicks);
+        document.getElementById('stat-url').textContent = data.url;
+        document.getElementById('stat-creado').textContent = new Date(data.creado).toLocaleDateString();
+        stats.classList.remove('oculto');
+      } finally {
+        botonBuscar.disabled = false;
+        botonBuscar.textContent = 'Buscar';
       }
-
-      const data = await res.json();
-      document.getElementById('stat-clicks').textContent = data.clicks;
-      document.getElementById('stat-url').textContent = data.url;
-      document.getElementById('stat-creado').textContent = new Date(data.creado).toLocaleDateString();
-      stats.classList.remove('oculto');
     }
 
     form.addEventListener('submit', (e) => {

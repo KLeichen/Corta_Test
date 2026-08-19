@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Corta: acortador interno</title>
+  <link rel="icon" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
@@ -23,9 +27,15 @@
         <h1>Acortar un link</h1>
         <p class="sub">Pegá una URL larga y obtené un código corto para compartir.</p>
 
+        <div class="badges">
+          <span class="badge">⚡ Al instante</span>
+          <span class="badge">🔒 Uso interno</span>
+          <span class="badge">📊 Con estadísticas</span>
+        </div>
+
         <form id="form">
           <input type="url" id="url" placeholder="https://una-url-muy-larga..." required autofocus>
-          <button type="submit">Acortar</button>
+          <button type="submit" id="boton-acortar">Acortar</button>
         </form>
 
         <div id="resultado" class="resultado oculto">
@@ -50,6 +60,8 @@
     </main>
   </div>
 
+  <div id="toast" class="toast">Copiado al portapapeles</div>
+
   <script>
     const CLAVE_HISTORIAL = 'corta_historial';
     const MAX_HISTORIAL = 20;
@@ -60,6 +72,16 @@
     const historialLista = document.getElementById('historial-lista');
     const historialVacio = document.getElementById('historial-vacio');
     const limpiarBtn = document.getElementById('limpiar-historial');
+    const botonAcortar = document.getElementById('boton-acortar');
+    const toast = document.getElementById('toast');
+
+    let toastTimeout;
+    function mostrarToast(texto) {
+      toast.textContent = texto;
+      toast.classList.add('visible');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toast.classList.remove('visible'), 2000);
+    }
 
     function leerHistorial() {
       try {
@@ -83,9 +105,10 @@
       historialVacio.classList.toggle('oculto', items.length > 0);
       limpiarBtn.classList.toggle('oculto', items.length === 0);
 
-      for (const item of items) {
+      items.forEach((item, indice) => {
         const li = document.createElement('li');
         li.className = 'historial-item';
+        li.style.animationDelay = `${Math.min(indice, 10) * 40}ms`;
         li.innerHTML = `
           <div class="historial-item-info">
             <a class="historial-codigo" href="${item.corta}" target="_blank" rel="noopener">${item.corta}</a>
@@ -97,7 +120,7 @@
           </div>
         `;
         historialLista.appendChild(li);
-      }
+      });
     }
 
     function agregarAlHistorial(item) {
@@ -109,26 +132,46 @@
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const url = document.getElementById('url').value;
-      const res = await fetch('/api/links', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      if (!res.ok) return;
+      resultado.classList.add('oculto');
+      botonAcortar.disabled = true;
+      botonAcortar.innerHTML = '<span class="spinner"></span>Acortando...';
 
-      const data = await res.json();
-      const corta = window.location.origin + data.corta;
-      linkCorto.textContent = corta;
-      linkCorto.href = corta;
-      resultado.classList.remove('oculto');
+      try {
+        const url = document.getElementById('url').value;
+        const res = await fetch('/api/links', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        if (!res.ok) {
+          mostrarToast('No se pudo acortar ese link');
+          return;
+        }
 
-      agregarAlHistorial({ codigo: data.codigo, corta: data.corta, url, creado: new Date().toISOString() });
-      document.getElementById('url').value = '';
+        const data = await res.json();
+        const corta = window.location.origin + data.corta;
+        linkCorto.textContent = corta;
+        linkCorto.href = corta;
+        resultado.classList.remove('oculto');
+
+        agregarAlHistorial({ codigo: data.codigo, corta: data.corta, url, creado: new Date().toISOString() });
+        document.getElementById('url').value = '';
+      } finally {
+        botonAcortar.disabled = false;
+        botonAcortar.textContent = 'Acortar';
+      }
     });
 
-    document.getElementById('copiar').addEventListener('click', () => {
+    const copiarBtn = document.getElementById('copiar');
+    copiarBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(linkCorto.textContent);
+      copiarBtn.textContent = '¡Copiado!';
+      copiarBtn.classList.add('copiado');
+      mostrarToast('Copiado al portapapeles');
+      setTimeout(() => {
+        copiarBtn.textContent = 'Copiar';
+        copiarBtn.classList.remove('copiado');
+      }, 1500);
     });
 
     limpiarBtn.addEventListener('click', () => {

@@ -2,7 +2,7 @@
 
 Especificación del comportamiento esperado del acortador de URLs interno. Se escribe temprano, a partir de lo relevado del proyecto heredado, y se actualiza a medida que cambia el entendimiento (nuevos bugs encontrados, decisiones tomadas, milestones completados).
 
-Última actualización: Milestone 1 completado (repo trackeado). Este documento se escribe **antes** de Milestone 2 y 3, así que describe el comportamiento *esperado/correcto*, no necesariamente el actual — donde difieren, se marca explícitamente como bug conocido a corregir.
+Última actualización: Milestone 5 completado (producción en Railway). El comportamiento descripto abajo es el actual — los bugs que originalmente motivaron este spec (Milestone 3 y 4) ya están corregidos e implementados; se dejan documentados como "bug corregido" para que quede registro de qué cambió.
 
 ## Resumen
 
@@ -10,7 +10,12 @@ Corta es un acortador de URLs interno. Un usuario pega una URL larga, recibe un 
 
 ## Modelo de datos
 
-Persistencia: `links.json` en la raíz del repo, un array de objetos:
+Persistencia vía `storage.js`, que abstrae dos backends según `DATABASE_URL`:
+
+- **Sin `DATABASE_URL`** (local/tests): `links.json` en la raíz del repo, un array de objetos, leído/escrito sync con `fs.readFileSync`/`writeFileSync`.
+- **Con `DATABASE_URL`** (producción, Railway): tabla `links` en Postgres, mismas columnas. Es lo que permite que los links y sus clicks sobrevivan a un redeploy (el filesystem del contenedor no persiste, la base sí).
+
+Forma del registro (misma en ambos backends):
 
 ```json
 {
@@ -21,7 +26,7 @@ Persistencia: `links.json` en la raíz del repo, un array de objetos:
 }
 ```
 
-`codigo` es único dentro del archivo (ver "Generación de códigos y colisiones" más abajo — hoy esto **no** se garantiza, es un bug conocido).
+`codigo` es único (ver "Generación de códigos y colisiones" más abajo).
 
 ## Endpoints
 
@@ -39,9 +44,9 @@ Crea un link corto.
 | `url` presente pero no es una URL válida (no parseable, sin protocolo `http`/`https`) | 400 | `{ "error": "URL inválida" }` |
 | `url` válida | 200 | `{ "codigo": "<3 chars>", "corta": "/<codigo>" }` |
 
-Al crear el link se persiste en `links.json` con `clicks: 0` y `creado` seteado al momento de creación (UTC, ISO 8601).
+Al crear el link se persiste con `clicks: 0` y `creado` seteado al momento de creación (UTC, ISO 8601).
 
-**Estado actual:** no valida el formato de la URL, solo que sea *truthy* — acepta strings como `"hola"` como URL válida. Esto es un bug a corregir en Milestone 3 (la validación de "URL inválida" es comportamiento esperado, no implementado todavía).
+La validación de URL (`esUrlValida` en `server.js`) exige que sea parseable con `new URL()` y que el protocolo sea `http:` o `https:`. Un string como `"hola"` ya devuelve 400.
 
 ### `GET /:codigo`
 
@@ -54,11 +59,11 @@ Redirige al destino del link corto.
 | `codigo` existe | **302**, header `Location: <url>` | redirect real del navegador |
 | `codigo` no existe | 404 | `No existe ese link` (texto plano) |
 
-Cada visita exitosa (código encontrado) incrementa `clicks` en 1 y persiste el cambio antes de responder.
+Cada visita exitosa (código encontrado) incrementa `clicks` en 1 y persiste el cambio antes de responder con el redirect.
 
-**Estado actual (bug conocido, Milestone 3):** el servidor no emite un redirect HTTP — responde `200` con la URL de destino como texto plano en el body (`res.send(link.url)`). El navegador se queda en `/:codigo` mostrando texto, no navega. Esto rompe el criterio "el link corto te lleva a destino". El comportamiento esperado es un `302` real (`res.redirect(link.url)`).
+**Bug corregido (Milestone 3):** antes el servidor respondía `200` con la URL de destino como texto plano (`res.send(link.url)`) en vez de redirigir — el navegador se quedaba en `/:codigo` mostrando texto. Ahora usa `res.redirect(link.url)`, que emite el `302` real.
 
-### `GET /api/links/:codigo/stats` (pendiente — Milestone 4)
+### `GET /api/links/:codigo/stats`
 
 Devuelve las estadísticas de un link, sin modificarlo.
 
@@ -71,21 +76,23 @@ Devuelve las estadísticas de un link, sin modificarlo.
 
 **Importante:** consultar las estadísticas **no** incrementa `clicks`. Solo `GET /:codigo` (la redirección real) cuenta como una visita. Esto es lo que hace que "las estadísticas digan la verdad" (ver sección dedicada).
 
-`public/stats.html` ya tiene la maqueta (con datos hardcodeados de mentira) pero no llama a este endpoint todavía — falta conectarlo.
+`public/stats.html` (Milestone 4) llama a este endpoint y muestra clicks, URL original y fecha de creación reales — ya no hay datos hardcodeados.
 
 ## Generación de códigos y colisiones
 
 `utils.js` genera códigos de 3 caracteres tomados al azar de `[a-z0-9]` (36 caracteres → 46,656 combinaciones posibles). Con `links.json` creciendo, la probabilidad de colisión no es despreciable (cumpleaños: con unos cientos de links ya es significativa).
 
-**Comportamiento esperado:** al generar un código nuevo, verificar contra los códigos existentes en `links.json` y regenerar si ya está en uso, hasta encontrar uno libre. Nunca debe pisarse un link existente ni crearse un duplicado.
+Al generar un código nuevo, `generarCodigoUnico()` (`utils.js`) verifica contra los códigos existentes y regenera si ya está en uso, hasta encontrar uno libre. Nunca se pisa un link existente ni se crea un duplicado.
 
-**Estado actual (bug conocido, Milestone 3):** `generarCodigo()` no chequea contra `links.json`. Si genera un código que ya existe, `POST /api/links` agrega una segunda entrada con el mismo `codigo`. Como `GET /:codigo` usa `.find()` (devuelve el primer match), el segundo link queda inaccesible por su código corto — silenciosamente. Respuesta esperada: *"nada malo, lo arreglamos"* (criterio de Milestone 3) — regenerar hasta obtener un código libre, no fallar ni corromper el link anterior.
+**Bug corregido (Milestone 3):** antes `generarCodigo()` no chequeaba contra los links existentes; si generaba un código repetido, `POST /api/links` agregaba una segunda entrada con el mismo `codigo`, y como `GET /:codigo` usaba `.find()` (primer match), el segundo link quedaba inaccesible silenciosamente. Ahora `generarCodigoUnico()` recibe la lista de códigos ya usados y regenera hasta obtener uno libre — "nada malo, lo arreglamos".
 
 ## Qué significa "las estadísticas dicen la verdad"
 
 - `clicks` de un link refleja exactamente la cantidad de veces que se resolvió `GET /:codigo` para ese código — ni más, ni menos.
 - Consultar estadísticas (`GET /api/links/:codigo/stats`) es una operación de solo lectura: no incrementa `clicks`.
-- Cada visita a un `codigo` válido cuenta exactamente una vez. Escrituras concurrentes (dos requests casi simultáneos al mismo código) no deben pisarse ni perder un click — hoy `leerLinks`/`guardarLinks` hacen `fs.readFileSync`/`writeFileSync` sin ningún lock, así que dos requests concurrentes pueden leer el mismo estado viejo y el segundo `writeFileSync` pisa el incremento del primero (click perdido). Esto queda anotado como limitación conocida del storage basado en archivo; se revisita si se migra a una base de datos real en Milestone 5.
+- Cada visita a un `codigo` válido cuenta exactamente una vez. Escrituras concurrentes (dos requests casi simultáneos al mismo código) no deben pisarse ni perder un click.
+  - **En Postgres** (producción): `incrementarClicks` hace `UPDATE links SET clicks = clicks + 1 WHERE codigo = $1`, que es atómico a nivel fila — dos requests concurrentes no se pisan.
+  - **En `links.json`** (local/tests): sigue sin lock (`fs.readFileSync`/`writeFileSync` completos por request), así que dos requests concurrentes pueden leer el mismo estado viejo y el segundo `writeFileSync` pisa el incremento del primero (click perdido). Limitación conocida y aceptada del modo archivo — no afecta producción, que usa Postgres.
 - Un `codigo` inexistente nunca debe aparecer en las estadísticas como si tuviera actividad (404, no un objeto con `clicks: 0` inventado).
 
 ## Fuera de alcance de este spec
@@ -96,4 +103,4 @@ Devuelve las estadísticas de un link, sin modificarlo.
 
 - **Formato exacto de validación de URL** en `POST /api/links`: por ahora, "parseable con `new URL()` y protocolo `http:`/`https:`". A confirmar si se necesita algo más laxo o más estricto.
 - **Longitud/alfabeto del código corto**: se mantiene en 3 caracteres `[a-z0-9]` (comportamiento heredado). Si el volumen de links crece, revisar si alcanza.
-- **Manejo de la concurrencia en el archivo JSON**: hoy no hay lock. Se documenta como limitación conocida; no se resuelve en Milestone 3 salvo que un test lo exija explícitamente.
+- **Manejo de la concurrencia en el archivo JSON**: sin lock, limitación aceptada del modo local/tests (ver arriba). Producción usa Postgres y no tiene este problema.
